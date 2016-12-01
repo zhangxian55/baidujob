@@ -1,0 +1,310 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title>百度招聘</title>
+	<style type="text/css">
+		*{
+			margin: 0;
+			padding: 0;
+		}
+		body{
+			background-color: #eee;
+			font-family: "Microsoft Yahei";
+		}
+		.box{
+			width: 1000px;
+			margin: 0 auto;
+			background-color: white;
+			padding: 20px;
+		}
+		.box ul{
+			list-style: none;
+			min-height: 1000px;
+		}
+		.box ul li{
+			border-bottom: 1px solid #ccc;
+		}
+		.box ul li .hd{
+			height: 100px;
+			line-height: 80px;
+			position: relative;
+		}
+		.box ul li .hd div{
+			float: left;
+			width: 15%;
+			font-size: 14px;
+		}
+		.box ul li .hd span{
+			display: block;
+		}
+		.title{
+			font-size: 16px;
+			color:#105bbe;
+			font-weight: bold;
+		}
+		.gongsi{
+			font-size: 12px;
+			color:#333;
+		}
+		.t{
+			line-height: 20px;
+			padding-top: 30px;
+			width: 40% !important;
+		}
+		.bd{
+			padding: 20px;
+			display: none;
+			font-size: 12px;
+			line-height: 175%;
+		}
+		.btn{
+			position: absolute;
+			width: 20px;
+			height: 16px;
+			background: url(images/i_triangle_down_yellow.png) no-repeat center center;
+		    right: 33px;
+    		top: 37px;
+		}
+		.btn:hover{
+			border: 1px solid #000;
+		}
+		.open .btn{
+			background: url(images/i_triangle_up_yellow.png) no-repeat center center;
+		}
+		.pageNav{
+			width: 500px;
+			height: 40px;
+			margin: 30px auto;
+		}
+		.pageNav a{
+			float: left;
+			padding: 6px 10px;
+			background:-webkit-linear-gradient(top,#ccc,white);
+			border-radius: 4px;
+			margin-right: 5px;
+			border: 1px solid #ccc;
+			text-decoration: none;
+			color:black;
+			cursor: pointer;
+			font-size: 14px;
+			color:#333;
+			text-shadow:1px 1px #eee;
+		}
+		.pageNav a.cur{
+			background:-webkit-linear-gradient(top,orange,white);
+		}
+		.pageNav span{
+			float: left;
+			font-size: 12px;
+			margin-right: 5px;
+		}
+	</style>
+</head>
+<body>
+	<div class="box">
+		<ul>
+			
+		</ul>
+		<div class="pageNav" id="pageNav"></div>
+	</div>
+
+	<script type="text/template" id="template">
+		<li class="">
+			<div class="hd">
+				<div class="t">
+					<span class="title">
+						<a href="<%=url%>"><%=name%></a>
+					</span>
+					<span class="gongsi"><%=officialname%></span>
+				</div>
+				<div>
+					<%=province%>
+				</div>
+				<div>
+					<%=ori_salary%>
+				</div>
+				<div>
+					<%=source%>
+				</div>
+				<div>
+					<%=startdate%>
+				</div>
+				<a href="javascript:void(0)" class="btn"></a>
+			</div>
+			<div class="bd">
+				<p>招聘人数：<%=number%>人 经验：<%=experience%>年 学历：<%=education%></p>
+				<p><%=description%></p>
+			</div>
+		</li>
+	</script>
+
+	<script type="text/javascript" src="js/jquery-1.12.3.min.js"></script>
+	<script type="text/javascript" src="js/underscore.js"></script>
+	<script type="text/javascript">
+		// ***********************************************************
+		// ***********************************************************
+		// ***********************************************************
+		// 条目类
+		function JobItem(dictionary){
+			//编译函数
+			var compiled = _.template($("#template").html());
+			//自己的dom字符串，数据绑定
+			this.domstr = compiled(dictionary);
+			//自己的dom
+			this.$dom = $(this.domstr);
+			//上树
+			this.$dom.appendTo(".box ul");
+			//监听
+			this.$btn = this.$dom.find(".btn");
+			this.$bd = this.$dom.find(".bd");
+
+			var self = this;
+			this.$btn.click(function(){
+				self.$bd.slideToggle();
+				self.$dom.toggleClass("open");
+			});
+		}
+
+		// ***********************************************************
+		// ***********************************************************
+		// ***********************************************************
+		// 盒子类
+		function JobBox(){
+			this.$dom = $(".box ul");
+
+			var self = this;
+			//发出Ajax请求，请求页面总数量
+			$.get("data/zhaopin1.json",function(data){
+				var zongshu = data.data.data.listNum;
+				var jisuan = zongshu / 30;
+				//向上取整
+				var zongyeshu = parseInt(jisuan) == jisuan ? jisuan : parseInt(jisuan) + 1;
+
+				//自己的导航条	//实例化一个导航条
+				this.nav = new PageNav("#pageNav",zongyeshu,self);
+			});
+			
+		}
+		//清空自己的UL里面的元素，并且Ajax得到新json，组建新的li
+		//这个方法，是导航条的gotoPage调用。
+		JobBox.prototype.getjob = function(page){
+			this.$dom.empty();
+
+			$.get("data/zhaopin" + page + ".json",function(data){
+				_.each(data.data.data.disp_data,function(dictionary){
+					new JobItem(dictionary)
+				});
+			});
+		}
+
+		// ***********************************************************
+		// ***********************************************************
+		// ***********************************************************
+		//页面导航条类
+		function PageNav(id,pageAmount,box){
+			//自己的中介者
+			
+			this.nowPage = 1;this.box = box;
+			//自己的dom元素
+			this.$dom = $(id);
+			//当前页码
+			//总页码
+			this.pageAmount = pageAmount;
+			//调用gotoPage一次
+			this.gotoPage(this.nowPage);
+			//绑定监听
+			this.bindEvent();
+		}
+		PageNav.prototype.gotoPage = function(num){
+			//①改变信号量
+			this.nowPage = num;
+			//②先清空自己的DOM
+			this.$dom.empty();
+			//③然后创建新的导航条元素
+			if(this.pageAmount < 9){
+				//创建元素
+				this.nowPage != 1 && $("<a>上一页</a>").addClass("prevbtn").appendTo(this.$dom);
+				for(var i = 1 ; i <= this.pageAmount ; i++){
+					$("<a>" + i + "</a>").addClass("numbtn").appendTo(this.$dom);
+				}
+				this.nowPage != this.pageAmount && $("<a>下一页</a>").addClass("nextbtn").appendTo(this.$dom);
+
+				//加cur
+				$(".numbtn").eq(this.nowPage - 1).addClass("cur");
+			}else if(this.nowPage <= 4){
+				//创建元素
+				this.nowPage != 1 && $("<a>上一页</a>").addClass("prevbtn").appendTo(this.$dom);
+				$("<a>1</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>2</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>3</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>4</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>5</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<span>...</span>").appendTo(this.$dom);
+				$("<a>" + this.pageAmount + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>下一页</a>").addClass("nextbtn").appendTo(this.$dom);
+
+				//加cur
+				$(".numbtn").eq(this.nowPage - 1).addClass("cur");
+			}else if(this.nowPage <= this.pageAmount - 4){
+				$("<a>上一页</a>").addClass("prevbtn").appendTo(this.$dom);
+				$("<a>1</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<span>...</span>").appendTo(this.$dom);
+				$("<a>" + (this.nowPage - 2) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + (this.nowPage - 1) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + this.nowPage + "</a>").addClass("numbtn cur").appendTo(this.$dom);
+				$("<a>" + (this.nowPage + 1) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + (this.nowPage + 2) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<span>...</span>").appendTo(this.$dom);
+				$("<a>" + this.pageAmount + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>下一页</a>").addClass("nextbtn").appendTo(this.$dom);
+			}else{
+				$("<a>上一页</a>").addClass("prevbtn").appendTo(this.$dom);
+				$("<a>1</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<span>...</span>").appendTo(this.$dom);
+				$("<a>" + (this.pageAmount - 5) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + (this.pageAmount - 4) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + (this.pageAmount - 3) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + (this.pageAmount - 2) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + (this.pageAmount - 1) + "</a>").addClass("numbtn").appendTo(this.$dom);
+				$("<a>" + this.pageAmount + "</a>").addClass("numbtn").appendTo(this.$dom);
+				this.nowPage != this.pageAmount &&  $("<a>下一页</a>").addClass("nextbtn").appendTo(this.$dom);
+
+				$(".numbtn").eq(this.nowPage - this.pageAmount- 1).addClass("cur");
+			}
+
+			//④ 命令jb得到此页的JSON，并且组建页面
+			this.box.getjob(num);
+
+			//⑤ 页面冲锋
+			$("html,body").animate({
+				"scrollTop" : 0
+			},400);
+		}
+		PageNav.prototype.bindEvent = function(){
+			var self = this;
+			$(".numbtn").click(function(){
+				self.gotoPage(parseInt($(this).html()));
+				self.bindEvent();
+			});
+
+			$(".prevbtn").click(function(){
+				self.gotoPage(parseInt(self.nowPage - 1));
+				self.bindEvent();
+				
+				return false;
+			});
+
+			$(".nextbtn").on("click",function(){
+				self.gotoPage(parseInt(self.nowPage + 1));
+				self.bindEvent();
+
+				return false;
+			});
+		}
+
+		//实例化一个JobBox。注意，JobItem是JobBox负责实例化的。
+		var jb = new JobBox();
+	</script>
+</body>
+</html>
